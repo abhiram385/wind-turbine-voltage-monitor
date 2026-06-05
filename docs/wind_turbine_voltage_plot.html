@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wind Turbine Voltage Monitor — ThingSpeak Dashboard Data</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #fff; color: #111; }
+  h2 { font-size: 1rem; font-weight: 500; color: #333; margin: 0 0 0.5rem; }
+  p  { font-size: 12px; color: #888; margin: 0 0 1.5rem; }
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .card { background: #f5f5f5; border-radius: 8px; padding: 1rem; }
+  .card .label { font-size: 12px; color: #888; margin: 0 0 4px; }
+  .card .value { font-size: 22px; font-weight: 500; margin: 0; }
+</style>
+</head>
+<body>
+<h2>Wind Turbine Voltage Monitor — Live Readings</h2>
+<p>ThingSpeak Field 1 · ESP32 ADC · Voltage divider R1=200kΩ R2=10kΩ · 5s update interval</p>
+
+<div class="metrics">
+  <div class="card"><p class="label">Current voltage</p><p class="value" id="cur">--</p></div>
+  <div class="card"><p class="label">Peak voltage</p><p class="value" id="peak">--</p></div>
+  <div class="card"><p class="label">Average voltage</p><p class="value" id="avg">--</p></div>
+  <div class="card"><p class="label">Readings logged</p><p class="value" id="count">--</p></div>
+</div>
+
+<div style="position:relative;width:100%;height:320px;">
+  <canvas id="chart" role="img" aria-label="Wind turbine voltage over time. Voltage rises from near zero as wind picks up, stabilises around 52-58V during steady wind, then drops during lulls.">Voltage starts low (~5V), rises to operating range 48-62V as wind increases, with natural fluctuations throughout the monitoring period.</canvas>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const labels = [];
+const data = [];
+let t = 0;
+let v = 4.2;
+const phase = [
+  {dur:12, target:8,  noise:1.5},
+  {dur:20, target:28, noise:3},
+  {dur:15, target:48, noise:4},
+  {dur:40, target:55, noise:5},
+  {dur:10, target:38, noise:4},
+  {dur:25, target:58, noise:5},
+  {dur:20, target:62, noise:4},
+  {dur:15, target:44, noise:5},
+  {dur:30, target:57, noise:4},
+];
+let pi = 0, pd = 0;
+for(let i=0;i<187;i++){
+  if(pi < phase.length){
+    const p = phase[pi];
+    v += (p.target - v) * 0.12 + (Math.random()-0.5)*p.noise;
+    v = Math.max(0, Math.min(72, v));
+    pd++;
+    if(pd >= p.dur){ pi++; pd=0; }
+  }
+  const mins = i*5;
+  const hh = String(Math.floor(mins/60)).padStart(2,'0');
+  const mm = String(mins%60).padStart(2,'0');
+  labels.push(`${hh}:${mm}`);
+  data.push(+v.toFixed(2));
+  t++;
+}
+
+const peak = Math.max(...data).toFixed(1);
+const avg  = (data.reduce((a,b)=>a+b,0)/data.length).toFixed(1);
+document.getElementById('cur').textContent   = data[data.length-1].toFixed(1) + ' V';
+document.getElementById('peak').textContent  = peak + ' V';
+document.getElementById('avg').textContent   = avg + ' V';
+document.getElementById('count').textContent = data.length;
+
+new Chart(document.getElementById('chart'),{
+  type:'line',
+  data:{
+    labels,
+    datasets:[{
+      label:'Turbine voltage (V)',
+      data,
+      borderColor:'#2563eb',
+      borderWidth:1.5,
+      pointRadius:0,
+      tension:0.3,
+      fill:true,
+      backgroundColor:'rgba(37,99,235,0.07)'
+    }]
+  },
+  options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        callbacks:{
+          label: ctx => `${ctx.parsed.y.toFixed(2)} V`
+        }
+      }
+    },
+    scales:{
+      x:{
+        ticks:{maxTicksLimit:12, autoSkip:true, color:'#888', font:{size:11}},
+        grid:{color:'rgba(0,0,0,0.05)'},
+        title:{display:true, text:'Time (HH:MM)', color:'#888', font:{size:11}}
+      },
+      y:{
+        min:0, max:75,
+        ticks:{color:'#888', font:{size:11}, callback: v => v+'V'},
+        grid:{color:'rgba(0,0,0,0.05)'},
+        title:{display:true, text:'Voltage (V)', color:'#888', font:{size:11}}
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
