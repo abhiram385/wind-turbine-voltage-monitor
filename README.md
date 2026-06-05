@@ -10,6 +10,10 @@ Small wind turbines produce variable DC output after rectification. This system 
 
 Built as a low-cost alternative to commercial monitoring systems using an ESP32 and two resistors as the core measurement circuit.
 
+
+
+Output- https://abhiram385.github.io/wind-turbine-voltage-monitor/docs/wind_turbine_voltage_plot.html
+
 ---
 
 ## Hardware
